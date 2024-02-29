@@ -1,13 +1,19 @@
+import tkinter as tk
+from tkinter import filedialog, simpledialog, colorchooser, StringVar, Label, OptionMenu, Button
+
 import matplotlib.pyplot as plt
 from PIL import Image, ImageFont, ImageDraw
 
+application_window = tk.Tk()
+result = None
 
-def get_image():
-    uploaded_image = Image.open("images/IMAG0126-2.jpg").convert("RGBA")
+
+def get_image(file_name):
+    uploaded_image = Image.open(file_name).convert("RGBA")
     return uploaded_image
 
 
-def add_watermark(base_image, image_text, text_pos, op):
+def add_watermark(base_image, image_text, text_pos, op, color):
     # convert opacity from 100 max to 255 max
     op = int(op * 2.55)
 
@@ -22,7 +28,7 @@ def add_watermark(base_image, image_text, text_pos, op):
     font = ImageFont.truetype("fonts/Arial.ttf", (font_size // 10))
 
     # add watermark
-    draw.text((x, y), image_text, fill=(255, 255, 255, op), font=font, anchor=anchor)
+    draw.text((x, y), image_text, fill=(color[0], color[1], color[2], op), font=font, anchor=anchor)
     composite = Image.alpha_composite(base_image, watermark_image).convert("RGB")
 
     # save image file
@@ -71,17 +77,63 @@ def position_text(pos, width, height):
     return _x, _y, anchor_point, font_size
 
 
+def my_choice_box(choicelist):
+    global result
+
+    def buttonfn():
+        global result
+        result = var.get()
+        choicewin.quit()
+
+    choicewin = tk.Tk()
+    choicewin.resizable(False, False)
+    choicewin.title("ChoiceBox")
+
+    Label(choicewin, text="Select an item:").grid(row=0, column=0, sticky="W")
+
+    var = StringVar(choicewin)
+    var.set("No data")  # default option
+    popupMenu = OptionMenu(choicewin, var, *choicelist)
+    popupMenu.grid(sticky="W", row=1, column=0)
+
+    Button(choicewin, text="Done", command=buttonfn).grid(row=2, column=0)
+    choicewin.mainloop()
+    return result
+
+
 # positions
 positions = ["top_right", "bot_right", "top_left", "bot_left", "center"]
-position = 1
 
-# Opacity
-opacity = 60
+# prompt for image
+image_filename = None
+while not image_filename:
+    image_filename = filedialog.askopenfilename(parent=application_window,
+                                                title="Please select an image file (.jpg .png .tif .tiff .gif):",
+                                                filetypes=[("Image files", ".jpg .png .tif .tiff .gif")])
 
-text = "© 2024 Robert Minkler"
+# prompt for text
+watermark_text = None
+while not watermark_text:
+    watermark_text = simpledialog.askstring("Watermark text", "What text would you like to embed?")
 
-image = get_image()
-watermarked_image = add_watermark(image, text, positions[position], opacity)
-# this open the photo viewer
+# prompt for opacity
+opacity = None
+while not opacity:
+    opacity = simpledialog.askinteger("Opacity", "Watermark opacity 0 - 100",
+                                      minvalue=0, maxvalue=100)
+
+# prompt for color (default to white)
+rgb_color = colorchooser.askcolor(parent=application_window,
+                                  initialcolor=(255, 255, 255))
+
+# prompt for watermark position
+position_selection = None
+while position_selection not in positions:
+    position_selection = my_choice_box(positions)
+
+image = get_image(image_filename)
+watermarked_image = add_watermark(image, watermark_text, position_selection, opacity, rgb_color[0], )
+
+# open the photo viewer
 watermarked_image.show()
 plt.imshow(image)
